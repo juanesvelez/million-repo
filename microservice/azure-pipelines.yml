@@ -1,0 +1,40 @@
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  buildConfiguration: 'Release'
+  pythonVersion: '3.9'
+
+stages:
+- stage: Build
+  jobs:
+  - job: Build
+    steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '$(pythonVersion)'
+        addToPath: true
+
+    - script: |
+        python -m venv venv
+        source venv/bin/activate
+        pip install --upgrade pip
+        pip install -r test/requirements-dev.txt
+      displayName: 'Instalar dependencias para pruebas'
+
+    - script: |
+        source venv/bin/activate
+        pytest test/test_app.py
+      displayName: 'Ejecutar pruebas unitarias'
+
+    - script: |
+        docker build -t ghcr.io/juanesvelez/million:latest .
+      displayName: 'Construir imagen Docker'
+
+    - script: |
+        echo $GITHUB_TOKEN | docker login ghcr.io -u juanesvelez --password-stdin
+        docker push ghcr.io/juanesvelez/million:latest
+      displayName: 'Publicar imagen Docker'
